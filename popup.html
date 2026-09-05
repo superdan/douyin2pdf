@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --primary: #2b7de9;
+    --primary-dark: #1e5fb8;
+    --bg: #ffffff;
+    --border: #e4eaf2;
+    --text: #222b3a;
+    --text-2: #6b7686;
+    --ok: #2ea44f;
+    --err: #d73a49;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 380px;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    font-size: 13px;
+  }
+  header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  header .logo { width: 22px; height: 22px; }
+  header h1 { font-size: 14px; font-weight: 600; flex: 1; }
+  #pageInfo { color: var(--text-2); font-size: 12px; }
+  main { padding: 12px 14px; }
+
+  #status {
+    min-height: 16px;
+    margin-bottom: 10px;
+    color: var(--text-2);
+    line-height: 1.5;
+    word-break: break-all;
+  }
+  #status.ok { color: var(--ok); }
+  #status.err { color: var(--err); }
+
+  #thumbBox {
+    display: none;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  #thumbBox.show { display: grid; }
+  #thumbBox .thumb {
+    position: relative;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    aspect-ratio: 3/4;
+    background: #f5f7fa;
+  }
+  #thumbBox .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #thumbBox .thumb .no {
+    position: absolute; left: 3px; top: 3px;
+    background: rgba(0,0,0,.55); color: #fff;
+    font-size: 10px; border-radius: 4px; padding: 0 4px; line-height: 16px;
+    z-index: 2;
+  }
+  #thumbBox .thumb .pick {
+    position: absolute; right: 3px; top: 3px;
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 1.5px solid #fff; background: rgba(0,0,0,.35);
+    z-index: 2;
+  }
+  #thumbBox .thumb.selected { border-color: var(--primary); }
+  #thumbBox .thumb.selected .pick { background: var(--primary); }
+
+  #title {
+    width: 100%;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 9px; font-size: 13px; margin-bottom: 12px;
+    outline: none; color: var(--text);
+  }
+  #title:focus { border-color: var(--primary); }
+
+  #go {
+    width: 100%;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: 7px;
+    padding: 9px 0; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background .15s;
+  }
+  #go:hover:not(:disabled) { background: var(--primary-dark); }
+  #go:disabled { background: #a9c8f0; cursor: not-allowed; }
+
+  #barWrap {
+    display: none;
+    height: 5px; border-radius: 3px;
+    background: #eef2f7; margin-top: 10px; overflow: hidden;
+  }
+  #barWrap.show { display: block; }
+  #bar { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
+
+  footer {
+    padding: 8px 14px 12px;
+    color: var(--text-2); font-size: 11px;
+    border-top: 1px solid var(--border);
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<header>
+  <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="#2b7de9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="12" y1="18" x2="12" y2="12"/>
+    <polyline points="9 15 12 12 15 15"/>
+  </svg>
+  <h1>抖音图文转PDF</h1>
+  <span id="pageInfo"></span>
+</header>
+<main>
+  <div id="status">正在检测当前页面…</div>
+  <div id="thumbBox"></div>
+  <input id="title" placeholder="PDF 文件名" style="display:none">
+  <button id="go" disabled>生成 PDF</button>
+  <div id="barWrap"><div id="bar"></div></div>
+</main>
+<footer>
+  在抖音图文（note）页面上点击「生成 PDF」即可。图片仅在本机处理，不会上传。
+</footer>
+
+<script src="popup.js"></script>
+</body>
+</html>
