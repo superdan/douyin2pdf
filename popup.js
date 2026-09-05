@@ -22,17 +22,56 @@ function setProgress(pct) {
 // ---------- 启动：探测当前标签页 ----------
 (async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || !/^https:\/\/(www\.)?douyin\.com\/(note|video)\/\d+/.test(tab.url || '')) {
+  if (!tab) { setStatus('未找到当前标签页。', 'err'); return; }
+  currentTabId = tab.id;
+
+  // 搜索页/带 modal_id 的链接：自动跳转到标准笔记页（复用既有提取逻辑）
+  const url = tab.url || '';
+  const searchMatch = url.match(/^https:\/\/(www\.)?douyin\.com\/search\/[^?]*\?.*modal_id=(\d+)/);
+  if (searchMatch) {
+    const noteId = searchMatch[2];
+    const noteUrl = `https://www.douyin.com/note/${noteId}`;
+    setStatus(`检测到搜索页链接，正在跳转到笔记页…`);
+    await chrome.tabs.update(currentTabId, { url: noteUrl });
+    // 等待新页面加载 + content script 注入，轮询探测就绪（最长约 12 秒）
+    let ready = false;
+    let navigated = false;
+    for (let i = 0; i < 40; i++) {
+      await new Promise(res => setTimeout(res, 300));
+      // 关键：先确认标签页已真正跳转到笔记页。
+      // 跳转发起后旧搜索页卸载前仍会应答 PING（标题是搜索页的），必须忽略。
+      const [t] = await chrome.tabs.get(currentTabId);
+      if (!t || !t.url || !t.url.includes(`/note/${noteId}`)) continue;
+      navigated = true;
+      const resp = await chrome.tabs.sendMessage(currentTabId, { type: 'PING_EXTRACT_IMAGES' }).catch(() => null);
+      if (resp && resp.ok && (resp.images || []).length) {
+        handleExtract(resp);
+        return;
+      }
+      if (resp && resp.ok) ready = true; // script 已注入但图片未加载完，继续等
+    }
+    setStatus(navigated
+      ? (ready ? '笔记页已打开但未找到图片，请稍等图片加载后重新点击插件图标。'
+               : '跳转超时，请打开笔记页后重新点击插件图标。')
+      : '页面跳转失败，请手动打开笔记页后再点插件图标。', 'err');
+    return;
+  }
+
+  if (!/^https:\/\/(www\.)?douyin\.com\/(note|video)\/\d+/.test(url)) {
     setStatus('请先打开抖音图文页面（douyin.com/note/…），再点击本插件图标。', 'err');
     return;
   }
-  currentTabId = tab.id;
 
   const resp = await chrome.tabs.sendMessage(currentTabId, { type: 'PING_EXTRACT_IMAGES' }).catch(() => null);
   if (!resp || !resp.ok) {
     setStatus('页面未响应，请刷新抖音页面后重新打开插件。', 'err');
     return;
   }
+  handleExtract(resp);
+})();
+
+// ---------- 提取结果处理 ----------
+function handleExtract(resp) {
   images = resp.images || [];
   if (!images.length) {
     setStatus('未在页面中找到图文图片。若刚打开页面，请稍等图片加载后重试。', 'err');
@@ -50,7 +89,7 @@ function setProgress(pct) {
   }
   setStatus(hint);
   renderThumbs(resp.title);
-})();
+}
 
 // ---------- 缩略图（通过页面上下文取 dataURL，规避 CDN 拒绝扩展源） ----------
 let thumbCache = {}; // url -> dataURL
